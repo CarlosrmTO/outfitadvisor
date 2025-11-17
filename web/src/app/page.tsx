@@ -9,6 +9,13 @@ type Analysis = {
   recommendations: string[];
 };
 
+type ProductItem = {
+  name: string;
+  store: string;
+  category: string;
+  url: string;
+};
+
 export default function Home() {
   const [height, setHeight] = useState<string>("");
   const [weight, setWeight] = useState<string>("");
@@ -16,11 +23,13 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [products, setProducts] = useState<ProductItem[]>([]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setAnalysis(null);
+    setProducts([]);
 
     if (!photo) {
       setError("Por favor, sube una foto.");
@@ -49,7 +58,37 @@ export default function Home() {
       }
 
       const data = await response.json();
-      setAnalysis(data.analysis as Analysis);
+      const analysisData = data.analysis as Analysis;
+      setAnalysis(analysisData);
+
+      // Segunda llamada: recommendation-service (si hay recomendaciones)
+      if (analysisData.recommendations && analysisData.recommendations.length > 0) {
+        const recoBaseUrl =
+          process.env.NEXT_PUBLIC_RECO_API_BASE_URL || "";
+
+        if (recoBaseUrl) {
+          try {
+            const recoResponse = await fetch(`${recoBaseUrl}/recommendations`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                body_type: analysisData.body_type,
+                face_shape: analysisData.face_shape,
+                color_palette: analysisData.color_palette,
+                style_hint: null,
+                categories: analysisData.recommendations,
+              }),
+            });
+
+            if (recoResponse.ok) {
+              const recoData = await recoResponse.json();
+              setProducts(recoData.items as ProductItem[]);
+            }
+          } catch {
+            // Si falla el servicio de productos, no rompemos el flujo principal
+          }
+        }
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error desconocido";
       setError(message);
@@ -190,6 +229,33 @@ export default function Home() {
                         </li>
                       ))}
                     </ul>
+                  </div>
+                </div>
+              )}
+
+              {products.length > 0 && (
+                <div className="mt-5">
+                  <h2 className="h5 mb-3">Productos recomendados</h2>
+                  <div className="row g-3">
+                    {products.map((item, index) => (
+                      <div key={`${item.store}-${index}`} className="col-12 col-md-6">
+                        <div className="border rounded p-3 h-100">
+                          <div className="d-flex justify-content-between align-items-start mb-1">
+                            <h3 className="h6 mb-0">{item.name}</h3>
+                            <span className="badge text-bg-light">{item.store}</span>
+                          </div>
+                          <p className="mb-1 text-muted small">Categoría: {item.category}</p>
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-sm btn-outline-primary mt-2"
+                          >
+                            Ver producto
+                          </a>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
