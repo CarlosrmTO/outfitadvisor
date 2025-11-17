@@ -75,11 +75,25 @@ def analyze_with_openai(
         ],
     )
 
-    content = response.choices[0].message.content or "{}"
+    raw_content = response.choices[0].message.content or "{}"
 
     import json
 
-    data = json.loads(content)
+    # A veces el modelo devuelve ```json ... ```; limpiamos los fences antes de parsear
+    content = raw_content.strip()
+    if content.startswith("```"):
+        # Eliminamos los primeros ```... y el último ``` si existen
+        content = content.strip("`")
+        # En muchos casos la primera línea es 'json' o similar
+        if "\n" in content:
+            first_line, rest = content.split("\n", 1)
+            if first_line.lower().startswith("json"):
+                content = rest
+
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError as exc:  # noqa: TRY003
+        raise RuntimeError(f"Could not decode JSON from OpenAI response: {exc}: {raw_content}") from exc
 
     body_type = str(data.get("body_type", "desconocido"))
     face_shape = str(data.get("face_shape", "desconocido"))
