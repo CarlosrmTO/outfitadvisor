@@ -34,7 +34,8 @@ export default function Home() {
       formData.append("weight", weight);
       formData.append("photo", photo);
 
-      const response = await fetch("http://localhost:8000/analyze", {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+      const response = await fetch(`${baseUrl}/analyze`, {
         method: "POST",
         body: formData,
       });

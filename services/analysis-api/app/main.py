@@ -1,7 +1,9 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from typing import List
+
+from .models import AnalysisResult
+from .openai_analysis import analyze_with_openai
 
 app = FastAPI(title="OutfitAdvisor Analysis API")
 
@@ -12,13 +14,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-class AnalysisResult(BaseModel):
-    body_type: str
-    face_shape: str
-    color_palette: List[str]
-    recommendations: List[str]
 
 
 @app.get("/health")
@@ -38,15 +33,22 @@ async def analyze(
     if not photo.content_type or not photo.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Uploaded file must be an image")
 
-    dummy_result = AnalysisResult(
-        body_type="hourglass",
-        face_shape="oval",
-        color_palette=["#F5A9B8", "#A9D0F5", "#F2F5A9"],
-        recommendations=[
-            "Vestidos entallados que marquen cintura",
-            "Cuellos en V para estilizar la parte superior",
-            "Colores suaves y cálidos cerca del rostro",
-        ],
-    )
+    try:
+        image_bytes = await photo.read()
+        if not image_bytes:
+            raise HTTPException(status_code=400, detail="Uploaded image is empty")
 
-    return {"status": "success", "analysis": dummy_result.model_dump()}
+        result = analyze_with_openai(
+            image_bytes=image_bytes,
+            height=height,
+            weight=weight,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error while analyzing image with OpenAI: {exc}",
+        ) from exc
+
+    return {"status": "success", "analysis": result.model_dump()}
