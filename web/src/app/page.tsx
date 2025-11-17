@@ -34,7 +34,9 @@ export default function Home() {
       formData.append("weight", weight);
       formData.append("photo", photo);
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        "https://outfitadvisor-production.up.railway.app";
       const response = await fetch(`${baseUrl}/analyze`, {
         method: "POST",
         body: formData,
