@@ -53,19 +53,19 @@ def analyze_with_openai(
         "Responde solo con JSON válido, sin texto adicional."
     )
 
-    response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=[
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
             {
                 "role": "system",
-                "content": [{"type": "text", "text": system_prompt}],
+                "content": system_prompt,
             },
             {
                 "role": "user",
                 "content": [
                     {"type": "text", "text": user_prompt},
                     {
-                        "type": "input_image",
+                        "type": "image_url",
                         "image_url": {
                             "url": f"data:image/jpeg;base64,{b64_image}",
                         },
@@ -73,10 +73,9 @@ def analyze_with_openai(
                 ],
             },
         ],
-        response_format={"type": "json"},
     )
 
-    content = response.output["choices"][0]["message"]["content"][0]["text"]  # type: ignore[index]
+    content = response.choices[0].message.content or "{}"
 
     import json
 
