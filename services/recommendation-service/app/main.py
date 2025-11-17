@@ -28,7 +28,10 @@ app = FastAPI(title="OutfitAdvisor Recommendation Service")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # No necesitamos credenciales (cookies/autenticación de navegador) en este
+    # servicio público de recomendaciones, así que desactivamos credentials
+    # para simplificar el manejo de CORS y evitar problemas en preflight.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
